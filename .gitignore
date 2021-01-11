@@ -30,3 +30,11 @@
 *.exe
 *.out
 *.app
+
+# Build stuff
+build/*
+compile_commands.json
+
+# ESP-IDF garbage
+sdkconfig.old
+.cache/*
