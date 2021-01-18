@@ -15,6 +15,7 @@
 #include "esp_system.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
+#include "data_grabber.h"
 
 #define LOG_TAG "btcink"
 #define SD_MOUNT "/sdcard"
@@ -30,6 +31,10 @@ extern "C" {
 #include <gdeh0213b73.h>
 EpdSpi io;
 Gdeh0213b73 display(io);
+
+/* FreeRTOS event group to signal when we are connected*/
+static EventGroupHandle_t s_wifi_event_group;
+#define WIFI_CONNECTED_BIT BIT0
 
 void read_config(void)
 {
@@ -69,12 +74,31 @@ void read_config(void)
     fclose(f);
 }
 
+static void wifi_handler(void* arg, esp_event_base_t event_base,
+                         int32_t event_id, void* event_data)
+{
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        esp_wifi_connect();
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        esp_wifi_connect();
+        ESP_LOGI(LOG_TAG, "Connect failed, retrying");
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+        ESP_LOGI(LOG_TAG, "Got ip: " IPSTR, IP2STR(&event->ip_info.ip));
+        xEventGroupSetBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
+    }
+}
+
 void app_main(void)
 {
-    int ret = 0;
+    esp_err_t ret = 0;
     ESP_LOGI(LOG_TAG, "Hello!");
+    ESP_ERROR_CHECK(esp_netif_init());
+
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    esp_netif_create_default_wifi_sta();
     // Initialize NVS
-    esp_err_t ret = nvs_flash_init();
+    ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
       ESP_ERROR_CHECK(nvs_flash_erase());
       ret = nvs_flash_init();
@@ -113,8 +137,29 @@ void app_main(void)
     } else {
         ESP_LOGI(LOG_TAG, "No SD card detected");
     }
+    s_wifi_event_group = xEventGroupCreate();
+    DataGrabber* grabber = new DataGrabber();
 
     esp_wifi_start();
     esp_wifi_connect();
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,
+                                                        ESP_EVENT_ANY_ID,
+                                                        &wifi_handler,
+                                                        NULL,
+                                                        NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
+                                                        IP_EVENT_STA_GOT_IP,
+                                                        &wifi_handler,
+                                                        NULL,
+                                                        NULL));
 
+    /* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
+     * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
+    EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
+            WIFI_CONNECTED_BIT,
+            pdFALSE,
+            pdFALSE,
+            portMAX_DELAY);
+
+    grabber->update();
 }
