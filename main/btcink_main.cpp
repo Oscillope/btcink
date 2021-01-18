@@ -114,11 +114,11 @@ void app_main(void)
     display.setFont(&FreeSans9pt7b);
     display.fillRect(0, 0, 256, 16, EPD_BLACK);
     display.setTextColor(EPD_WHITE);
-    display.setCursor(0, 10);
+    display.setCursor(0, 12);
     display.println("Status bar goes here");
     display.setTextColor(EPD_BLACK);
     display.println("HELLO WORLD");
-    //display.update();
+    display.update();
 
     // Read SD card for wifi config
     sdmmc_host_t sd_host = SDMMC_HOST_DEFAULT();
@@ -161,5 +161,17 @@ void app_main(void)
             pdFALSE,
             portMAX_DELAY);
 
-    grabber->update();
+    while (1) {
+        grabber->update();
+        display.fillRect(0, 16, 256, 64, EPD_BLACK);
+        display.setTextColor(EPD_WHITE);
+        display.setCursor(0, 30);
+        char disp_str[64];
+        snprintf(disp_str, sizeof(disp_str), "Price: %d", grabber->get_price());
+        display.println(disp_str);
+        snprintf(disp_str, sizeof(disp_str), "Updated at: %s", grabber->get_timestamp());
+        display.println(disp_str);
+        display.updateWindow(0, 24, 256, 34);
+        vTaskDelay(1000);
+    }
 }
