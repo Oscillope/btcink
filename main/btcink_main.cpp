@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <cstring>
 #include "esp_err.h"
 #include "esp_interface.h"
 #include "esp_wifi_types.h"
@@ -16,6 +17,7 @@
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "data_grabber.h"
+#include "disp_mgr.h"
 
 #define LOG_TAG "btcink"
 #define SD_MOUNT "/sdcard"
@@ -23,14 +25,6 @@
 extern "C" {
     void app_main(void);
 }
-
-// eInk display init
-#define PROGMEM
-#include <gfxfont.h>
-#include <Fonts/FreeSans9pt7b.h>
-#include <gdeh0213b73.h>
-EpdSpi io;
-Gdeh0213b73 display(io);
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
@@ -109,17 +103,6 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_wifi_init(&wifi_config));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
 
-    display.init(false);
-    display.setRotation(1);
-    display.setFont(&FreeSans9pt7b);
-    display.fillRect(0, 0, 256, 16, EPD_BLACK);
-    display.setTextColor(EPD_WHITE);
-    display.setCursor(0, 12);
-    display.println("Status bar goes here");
-    display.setTextColor(EPD_BLACK);
-    display.println("HELLO WORLD");
-    display.update();
-
     // Read SD card for wifi config
     sdmmc_host_t sd_host = SDMMC_HOST_DEFAULT();
     sd_host.slot = SDMMC_HOST_SLOT_1;
@@ -139,6 +122,7 @@ void app_main(void)
     }
     s_wifi_event_group = xEventGroupCreate();
     DataGrabber* grabber = new DataGrabber();
+    DisplayManager* dispman = new DisplayManager();
 
     esp_wifi_start();
     esp_wifi_connect();
@@ -162,16 +146,14 @@ void app_main(void)
             portMAX_DELAY);
 
     while (1) {
+        wifi_ap_record_t ap_info;
+        esp_err_t err = esp_wifi_sta_get_ap_info(&ap_info);
+        if (err == ESP_OK) {
+            dispman->update_status(ap_info.rssi);
+        }
         grabber->update();
-        display.fillRect(0, 16, 256, 64, EPD_BLACK);
-        display.setTextColor(EPD_WHITE);
-        display.setCursor(0, 30);
-        char disp_str[64];
-        snprintf(disp_str, sizeof(disp_str), "Price: %d", grabber->get_price());
-        display.println(disp_str);
-        snprintf(disp_str, sizeof(disp_str), "Updated at: %s", grabber->get_timestamp());
-        display.println(disp_str);
-        display.updateWindow(0, 24, 256, 34);
+        dispman->update_value(grabber->get_price());
+        dispman->update_time(grabber->get_timestamp());
         vTaskDelay(1000);
     }
 }
