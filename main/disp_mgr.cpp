@@ -68,7 +68,7 @@ void DisplayManager::update_graph(uint32_t value, uint32_t high, uint32_t low)
     } else {
         graph_idx = 0;
     }
-    display.fillRect(118, 18, 128, 80, EPD_BLACK);
+    display.fillRect(118, 18, 132, 80, EPD_BLACK);
     for (uint8_t i = graph_idx; i < NUM_GRAPH_POINTS + graph_idx; i++) {
         uint32_t scaled_point = 0;
         if (i < NUM_GRAPH_POINTS && points[i]) {
@@ -79,31 +79,40 @@ void DisplayManager::update_graph(uint32_t value, uint32_t high, uint32_t low)
             continue;
         }
         ESP_LOGD(LOG_TAG, "pixel x %u y %u", (118 + (i - graph_idx)), (18 + (100 - scaled_point)));
+        // Make the line 2 pixels thick so it's more visible
+        display.drawPixel(118 + (i - graph_idx), 17 + (100 - scaled_point), EPD_WHITE);
         display.drawPixel(118 + (i - graph_idx), 18 + (100 - scaled_point), EPD_WHITE);
     }
-    display.updateWindow(118, 26, 128, 82);
+    display.updateWindow(118, 26, 132, 82);
 }
 
-void DisplayManager::update_value(uint32_t value)
+void DisplayManager::update_value(uint32_t value, uint32_t high, uint32_t low)
 {
-    display.fillRect(0, 18, 118, 40, EPD_BLACK);
+    display.fillRect(0, 18, 118, 80, EPD_BLACK);
+    update_graph(value, high, low);
     display.setTextColor(EPD_WHITE);
     display.setCursor(0, 46);
     char disp_str[20];
     display.setFont(&FreeSansBold18pt7b);
     snprintf(disp_str, sizeof(disp_str), "$%d", value);
     display.println(disp_str);
-    display.updateWindow(0, 26, 118, 30);
+    display.setFont(&FreeSans9pt7b);
+    display.setCursor(0, 70);
+    snprintf(disp_str, sizeof(disp_str), "High: $%d", high);
+    display.println(disp_str);
+    snprintf(disp_str, sizeof(disp_str), "Low: $%d", low);
+    display.println(disp_str);
+    display.updateWindow(0, 26, 118, 82);
 }
 
 void DisplayManager::update_time(time_t newtime)
 {
-    display.fillRect(0, 72, display.width(), 50, EPD_BLACK);
+    display.fillRect(0, 102, display.width(), 24, EPD_BLACK);
     display.setTextColor(EPD_WHITE);
-    display.setCursor(0, 90);
+    display.setCursor(0, 120);
     char disp_str[72];
     display.setFont(&FreeSans9pt7b);
-    snprintf(disp_str, sizeof(disp_str), "Updated at:\nUTC %s", ctime(&newtime));
+    snprintf(disp_str, sizeof(disp_str), "UTC %s", ctime(&newtime));
     display.println(disp_str);
-    display.updateWindow(0, 80, display.width(), 40);
+    display.updateWindow(0, 102, display.width(), 20);
 }
