@@ -9,7 +9,9 @@ public:
     ~DataGrabber(void);
 
     int update(void);
-    int get_price(void) { return btc_price; }
+    uint32_t get_price(void) { return btc_price; }
+    uint32_t get_high(void) { return btc_high; }
+    uint32_t get_low(void) { return btc_low; }
     char* get_timestamp(void) { return btc_timestamp; }
 
 private:
@@ -17,7 +19,9 @@ private:
     const esp_http_client_config_t config;
     esp_http_client_handle_t client;
     ChunkedResponse response;
-    int btc_price;
+    uint32_t btc_price;
+    uint32_t btc_high;
+    uint32_t btc_low;
     char btc_timestamp[32];
 };
 

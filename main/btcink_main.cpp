@@ -3,6 +3,7 @@
 #include "esp_err.h"
 #include "esp_interface.h"
 #include "esp_wifi_types.h"
+#include "freertos/portmacro.h"
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -152,8 +153,9 @@ void app_main(void)
             dispman->update_status(ap_info.rssi);
         }
         grabber->update();
-        dispman->update_value(grabber->get_price());
         dispman->update_time(grabber->get_timestamp());
-        vTaskDelay(1000);
+        dispman->update_value(grabber->get_price());
+        dispman->update_graph(grabber->get_price(), grabber->get_high(), grabber->get_low());
+        vTaskDelay(10000 / portTICK_PERIOD_MS);
     }
 }

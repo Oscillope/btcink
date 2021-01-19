@@ -32,13 +32,13 @@ esp_err_t DataGrabber::event_handler(esp_http_client_event_t *evt)
 {
     switch(evt->event_id) {
         case HTTP_EVENT_ERROR:
-            ESP_LOGI(LOG_TAG, "HTTP_EVENT_ERROR");
+            ESP_LOGD(LOG_TAG, "HTTP_EVENT_ERROR");
             break;
         case HTTP_EVENT_ON_CONNECTED:
-            ESP_LOGI(LOG_TAG, "HTTP_EVENT_ON_CONNECTED");
+            ESP_LOGD(LOG_TAG, "HTTP_EVENT_ON_CONNECTED");
             break;
         case HTTP_EVENT_HEADER_SENT:
-            ESP_LOGI(LOG_TAG, "HTTP_EVENT_HEADER_SENT");
+            ESP_LOGD(LOG_TAG, "HTTP_EVENT_HEADER_SENT");
             break;
         case HTTP_EVENT_ON_HEADER:
             ESP_LOGD(LOG_TAG, "HTTP_EVENT_ON_HEADER");
@@ -55,10 +55,10 @@ esp_err_t DataGrabber::event_handler(esp_http_client_event_t *evt)
 
             break;
         case HTTP_EVENT_ON_FINISH:
-            ESP_LOGI(LOG_TAG, "HTTP_EVENT_ON_FINISH");
+            ESP_LOGD(LOG_TAG, "HTTP_EVENT_ON_FINISH");
             break;
         case HTTP_EVENT_DISCONNECTED:
-            ESP_LOGI(LOG_TAG, "HTTP_EVENT_DISCONNECTED");
+            ESP_LOGD(LOG_TAG, "HTTP_EVENT_DISCONNECTED");
             break;
     }
     return ESP_OK;
@@ -70,7 +70,7 @@ int DataGrabber::update()
     esp_err_t err = esp_http_client_perform(client);
 
     if (err == ESP_OK) {
-        ESP_LOGI(LOG_TAG, "Status = %d, content_length = %d",
+        ESP_LOGD(LOG_TAG, "Status = %d, content_length = %d",
                  esp_http_client_get_status_code(client),
                  esp_http_client_get_content_length(client));
         if (esp_http_client_is_chunked_response(client)) {
@@ -78,6 +78,8 @@ int DataGrabber::update()
             cJSON* root = cJSON_ParseWithLength(response.get_data() + 1, response.get_len() - 1);
             if (root) {
                 btc_price = cJSON_GetObjectItem(root, "current_price")->valueint;
+                btc_high = cJSON_GetObjectItem(root, "high_24h")->valueint;
+                btc_low = cJSON_GetObjectItem(root, "low_24h")->valueint;
                 strncpy(btc_timestamp, cJSON_GetObjectItem(root, "last_updated")->valuestring, sizeof(btc_timestamp));
                 ESP_LOGI(LOG_TAG, "current price: %d updated at %s", btc_price, btc_timestamp);
                 cJSON_Delete(root);
