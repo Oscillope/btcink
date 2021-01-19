@@ -15,7 +15,7 @@ public:
     void update_status(int8_t rssi);
     void update_graph(uint32_t value, uint32_t high, uint32_t low);
     void update_value(uint32_t value);
-    void update_time(char* newtime);
+    void update_time(time_t newtime);
 
 private:
     EpdSpi io;

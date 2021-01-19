@@ -7,18 +7,21 @@
 
 #include "data_grabber.h"
 
-extern const char cloudflare_root_cert_pem_start[] asm("_binary_cloudflare_root_cert_pem_start");
-extern const char cloudflare_root_cert_pem_end[]   asm("_binary_cloudflare_root_cert_pem_end");
+extern const char digicert_root_cert_pem_start[] asm("_binary_digicert_root_cert_pem_start");
+extern const char digicert_root_cert_pem_end[]   asm("_binary_digicert_root_cert_pem_end");
 
 DataGrabber::DataGrabber()
     : config((esp_http_client_config_t)
-             { .url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin",
-               .cert_pem = cloudflare_root_cert_pem_start,
+             { //.url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin",
+               .url = "https://www.bitstamp.net/api/v2/ticker/btcusd/",
+               .cert_pem = digicert_root_cert_pem_start,
                .event_handler = event_handler,
                .user_data = &response })
     , response()
     , btc_price(0)
-    , btc_timestamp("")
+    , btc_high(0)
+    , btc_low(0)
+    , btc_timestamp(0)
 {
     client = esp_http_client_init(&config);
 }
@@ -30,6 +33,7 @@ DataGrabber::~DataGrabber()
 
 esp_err_t DataGrabber::event_handler(esp_http_client_event_t *evt)
 {
+    ChunkedResponse* resp = (ChunkedResponse*)evt->user_data;
     switch(evt->event_id) {
         case HTTP_EVENT_ERROR:
             ESP_LOGD(LOG_TAG, "HTTP_EVENT_ERROR");
@@ -46,13 +50,7 @@ esp_err_t DataGrabber::event_handler(esp_http_client_event_t *evt)
             break;
         case HTTP_EVENT_ON_DATA:
             ESP_LOGD(LOG_TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
-            if (!esp_http_client_is_chunked_response(evt->client)) {
-                printf("%.*s", evt->data_len, (char*)evt->data);
-            } else {
-                ChunkedResponse* resp = (ChunkedResponse*)evt->user_data;
-                resp->write_chunk(evt->data, evt->data_len);
-            }
-
+            resp->write_chunk(evt->data, evt->data_len);
             break;
         case HTTP_EVENT_ON_FINISH:
             ESP_LOGD(LOG_TAG, "HTTP_EVENT_ON_FINISH");
@@ -73,19 +71,16 @@ int DataGrabber::update()
         ESP_LOGD(LOG_TAG, "Status = %d, content_length = %d",
                  esp_http_client_get_status_code(client),
                  esp_http_client_get_content_length(client));
-        if (esp_http_client_is_chunked_response(client)) {
-            // The API returns the data in [], trim those out
-            cJSON* root = cJSON_ParseWithLength(response.get_data() + 1, response.get_len() - 1);
-            if (root) {
-                btc_price = cJSON_GetObjectItem(root, "current_price")->valueint;
-                btc_high = cJSON_GetObjectItem(root, "high_24h")->valueint;
-                btc_low = cJSON_GetObjectItem(root, "low_24h")->valueint;
-                strncpy(btc_timestamp, cJSON_GetObjectItem(root, "last_updated")->valuestring, sizeof(btc_timestamp));
-                ESP_LOGI(LOG_TAG, "current price: %d updated at %s", btc_price, btc_timestamp);
-                cJSON_Delete(root);
-            } else {
-                ESP_LOGE(LOG_TAG, "Failed to parse JSON");
-            }
+        cJSON* root = cJSON_ParseWithLength(response.get_data(), response.get_len());
+        if (root) {
+            btc_price = atoi(cJSON_GetObjectItem(root, "last")->valuestring);
+            btc_high = atoi(cJSON_GetObjectItem(root, "high")->valuestring);
+            btc_low = atoi(cJSON_GetObjectItem(root, "low")->valuestring);
+            btc_timestamp = atol(cJSON_GetObjectItem(root, "timestamp")->valuestring);
+            ESP_LOGI(LOG_TAG, "current price: %u updated at %lu", btc_price, btc_timestamp);
+            cJSON_Delete(root);
+        } else {
+            ESP_LOGE(LOG_TAG, "Failed to parse JSON");
         }
     }
     return err;

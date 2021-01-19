@@ -8,6 +8,7 @@
 #define PROGMEM
 #endif
 #include <gfxfont.h>
+#include <Fonts/FreeMono9pt7b.h>
 #include <Fonts/FreeSans9pt7b.h>
 #include <Fonts/FreeSansBold18pt7b.h>
 
@@ -23,7 +24,7 @@ DisplayManager::DisplayManager()
     memset(points, 0, sizeof(points));
     display.init(false);
     display.setRotation(1);
-    display.setFont(&FreeSans9pt7b);
+    display.setFont(&FreeMono9pt7b);
     display.fillRect(0, 0, display.width(), 18, EPD_BLACK);
     display.setTextColor(EPD_WHITE);
     display.setCursor(0, 12);
@@ -45,14 +46,14 @@ DisplayManager::~DisplayManager()
 void DisplayManager::update_status(int8_t rssi)
 {
     display.fillRect(0, 0, display.width(), 18, EPD_BLACK);
-    display.setFont(&FreeSans9pt7b);
+    display.setFont(&FreeMono9pt7b);
     display.fillRect(0, 0, display.width(), 18, EPD_WHITE);
     display.setTextColor(EPD_BLACK);
     display.setCursor(0, 13);
     uint32_t voltage = (uint32_t)(adc1_get_raw(ADC1_CHANNEL_7) * 1.76f);
     char disp_str[64];
-    snprintf(disp_str, sizeof(disp_str), "vBat: %4umV    WiFi: ", voltage);
-    for (int i = -80; i < rssi; i += 10) {
+    snprintf(disp_str, sizeof(disp_str), "vBat:%4umV  WiFi:", voltage);
+    for (int i = -80; i < rssi; i += 16) {
         strcat(disp_str, ")");
     }
     display.println(disp_str);
@@ -95,14 +96,14 @@ void DisplayManager::update_value(uint32_t value)
     display.updateWindow(0, 26, 118, 30);
 }
 
-void DisplayManager::update_time(char* newtime)
+void DisplayManager::update_time(time_t newtime)
 {
     display.fillRect(0, 72, display.width(), 50, EPD_BLACK);
     display.setTextColor(EPD_WHITE);
     display.setCursor(0, 90);
-    char disp_str[64];
+    char disp_str[72];
     display.setFont(&FreeSans9pt7b);
-    snprintf(disp_str, sizeof(disp_str), "Updated at:\n%s", newtime);
+    snprintf(disp_str, sizeof(disp_str), "Updated at:\nUTC %s", ctime(&newtime));
     display.println(disp_str);
     display.updateWindow(0, 80, display.width(), 40);
 }
