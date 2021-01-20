@@ -72,16 +72,16 @@ void DisplayManager::update_graph(uint32_t value, uint32_t high, uint32_t low)
     for (uint8_t i = graph_idx; i < NUM_GRAPH_POINTS + graph_idx; i++) {
         uint32_t scaled_point = 0;
         if (i < NUM_GRAPH_POINTS && points[i]) {
-            scaled_point = ((points[i] - low) * 100 / (high - low));
+            scaled_point = ((points[i] - low) * 80 / (high - low));
         } else if (i >= NUM_GRAPH_POINTS && points[i - NUM_GRAPH_POINTS]) {
-            scaled_point = ((points[i - NUM_GRAPH_POINTS] - low) * 100 / (high - low));
+            scaled_point = ((points[i - NUM_GRAPH_POINTS] - low) * 80 / (high - low));
         } else {
             continue;
         }
-        ESP_LOGD(LOG_TAG, "pixel x %u y %u", (118 + (i - graph_idx)), (18 + (100 - scaled_point)));
+        ESP_LOGD(LOG_TAG, "pixel x %u y %u", (118 + (i - graph_idx)), (18 + (80 - scaled_point)));
         // Make the line 2 pixels thick so it's more visible
-        display.drawPixel(118 + (i - graph_idx), 17 + (100 - scaled_point), EPD_WHITE);
-        display.drawPixel(118 + (i - graph_idx), 18 + (100 - scaled_point), EPD_WHITE);
+        display.drawPixel(118 + (i - graph_idx), 17 + (80 - scaled_point), EPD_WHITE);
+        display.drawPixel(118 + (i - graph_idx), 18 + (80 - scaled_point), EPD_WHITE);
     }
     display.updateWindow(118, 26, 132, 82);
 }
