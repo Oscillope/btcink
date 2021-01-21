@@ -24,6 +24,8 @@ DisplayManager::DisplayManager()
     memset(points, 0, sizeof(points));
     display.init(false);
     display.setRotation(1);
+    display.fillScreen(EPD_WHITE);
+    display.update();
     display.setFont(&FreeMono9pt7b);
     display.fillRect(0, 0, display.width(), 18, EPD_BLACK);
     display.setTextColor(EPD_WHITE);
