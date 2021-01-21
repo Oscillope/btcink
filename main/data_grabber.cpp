@@ -12,8 +12,7 @@ extern const char digicert_root_cert_pem_end[]   asm("_binary_digicert_root_cert
 
 DataGrabber::DataGrabber()
     : config((esp_http_client_config_t)
-             { //.url = "https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin",
-               .url = "https://www.bitstamp.net/api/v2/ticker/btcusd/",
+             { .url = "https://www.bitstamp.net/api/v2/ticker/btcusd/",
                .cert_pem = digicert_root_cert_pem_start,
                .event_handler = event_handler,
                .user_data = &response })
@@ -24,6 +23,7 @@ DataGrabber::DataGrabber()
     , btc_timestamp(0)
 {
     client = esp_http_client_init(&config);
+    esp_http_client_set_header(client, "Connection", "close");
 }
 
 DataGrabber::~DataGrabber()
@@ -83,5 +83,6 @@ int DataGrabber::update()
             ESP_LOGE(LOG_TAG, "Failed to parse JSON");
         }
     }
+    esp_http_client_close(client);
     return err;
 }

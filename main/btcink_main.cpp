@@ -152,9 +152,10 @@ void app_main(void)
         if (err == ESP_OK) {
             dispman->update_status(ap_info.rssi);
         }
-        grabber->update();
-        dispman->update_time(grabber->get_timestamp());
-        dispman->update_value(grabber->get_price(), grabber->get_high(), grabber->get_low());
+        if (grabber->update() == ESP_OK) {
+            dispman->update_time(grabber->get_timestamp());
+            dispman->update_value(grabber->get_price(), grabber->get_high(), grabber->get_low());
+        }
         vTaskDelay(10000 / portTICK_PERIOD_MS);
     }
 }
