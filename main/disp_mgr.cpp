@@ -2,7 +2,6 @@
 #include <stddef.h>
 #include <cstring>
 #include "driver/adc.h"
-#include "esp_adc_cal.h"
 #include "esp_log.h"
 #ifndef PROGMEM
 #define PROGMEM
@@ -16,9 +15,12 @@
 
 #define LOG_TAG "dispman"
 
+#define DEFAULT_VREF 1100
+
 DisplayManager::DisplayManager()
     : io()
     , display(io)
+    , charging(false)
     , graph_idx(0)
 {
     memset(points, 0, sizeof(points));
@@ -36,13 +38,21 @@ DisplayManager::DisplayManager()
     display.update();
 
     /* Battery ADC setup */
+    adc1_config_channel_atten(ADC1_CHANNEL_5, ADC_ATTEN_DB_11);
     adc1_config_channel_atten(ADC1_CHANNEL_7, ADC_ATTEN_DB_11);
     adc1_config_width(ADC_WIDTH_12Bit);
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_12Bit, DEFAULT_VREF, &adc_chars);
+    v_bat_last = esp_adc_cal_raw_to_voltage(adc1_get_raw(ADC1_CHANNEL_7), &adc_chars) * 2;
 
 }
 
 DisplayManager::~DisplayManager()
 {
+}
+
+void DisplayManager::full_refresh()
+{
+    display.update();
 }
 
 void DisplayManager::update_status(int8_t rssi)
@@ -52,9 +62,42 @@ void DisplayManager::update_status(int8_t rssi)
     display.fillRect(0, 0, display.width(), 18, EPD_WHITE);
     display.setTextColor(EPD_BLACK);
     display.setCursor(0, 13);
-    uint32_t voltage = (uint32_t)(adc1_get_raw(ADC1_CHANNEL_7) * 1.76f);
+    uint32_t v_bat = (uint32_t)(esp_adc_cal_raw_to_voltage(adc1_get_raw(ADC1_CHANNEL_7), &adc_chars) * 2);
+    uint32_t v_chg = (uint32_t)(esp_adc_cal_raw_to_voltage(adc1_get_raw(ADC1_CHANNEL_5), &adc_chars) * 2);
+    ESP_LOGI(LOG_TAG, "vBat: %u last: %u vChg: %u", v_bat, v_bat_last, v_chg);
     char disp_str[64];
-    snprintf(disp_str, sizeof(disp_str), "vBat:%4umV  WiFi:", voltage);
+    const char* bat_str;
+    if (v_chg > 4300 && v_bat > v_bat_last) { // We're charging
+        charging = true;
+        v_bat_last = v_bat;
+    } else if (v_chg <= v_bat && v_bat < v_bat_last) {
+        charging = false;
+        v_bat_last = v_bat;
+    }
+    switch (v_bat_last) {
+    case 4150 ... 4400:
+        bat_str = "+{||||}-";
+        break;
+    case 3900 ... 4149:
+        bat_str = (charging ? "+{<<<<}-" : "+{||||}-");
+        break;
+    case 3600 ... 3899:
+        bat_str = (charging ? "+{ <<<}-" : "+{ |||}-");
+        break;
+    case 3300 ... 3599:
+        bat_str = (charging ? "+{ <<<}-" : "+{  ||}-");
+        break;
+    case 3000 ... 3299:
+        bat_str = (charging ? "+{  <<}-" : "+{   |}-");
+        break;
+    case 2700 ... 2999:
+        bat_str = (charging ? "+{   <}-" : "+{    }-");
+        break;
+    default:
+        bat_str = "+[????]-";
+        break;
+    }
+    snprintf(disp_str, sizeof(disp_str), "%s    WiFi:", bat_str);
     for (int i = -80; i < rssi; i += 16) {
         strcat(disp_str, ")");
     }

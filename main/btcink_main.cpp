@@ -146,6 +146,8 @@ void app_main(void)
             pdFALSE,
             portMAX_DELAY);
 
+    int loops = 0;
+
     while (1) {
         wifi_ap_record_t ap_info;
         esp_err_t err = esp_wifi_sta_get_ap_info(&ap_info);
@@ -157,5 +159,11 @@ void app_main(void)
             dispman->update_value(grabber->get_price(), grabber->get_high(), grabber->get_low());
         }
         vTaskDelay(10000 / portTICK_PERIOD_MS);
+        // TODO: clean up the display management junk
+        if (!(++loops % 10)) {
+            // do a full refresh every 10 loops to keep the eink happy
+            dispman->full_refresh();
+            loops = 0;
+        }
     }
 }
