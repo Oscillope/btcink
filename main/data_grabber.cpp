@@ -71,7 +71,7 @@ int DataGrabber::update()
         ESP_LOGD(LOG_TAG, "Status = %d, content_length = %d",
                  esp_http_client_get_status_code(client),
                  esp_http_client_get_content_length(client));
-        cJSON* root = cJSON_ParseWithLength(response.get_data(), response.get_len());
+        cJSON* root = cJSON_Parse(response.get_data());
         if (root) {
             btc_price = atoi(cJSON_GetObjectItem(root, "last")->valuestring);
             btc_high = atoi(cJSON_GetObjectItem(root, "high")->valuestring);

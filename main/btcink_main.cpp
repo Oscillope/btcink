@@ -3,7 +3,6 @@
 #include "esp_err.h"
 #include "esp_interface.h"
 #include "esp_wifi_types.h"
-#include "freertos/portmacro.h"
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -55,16 +54,18 @@ void read_config(void)
         ESP_LOGE(LOG_TAG, "Failed to allocate config memory");
     }
     size_t bytes = fread(config, sizeof(char), 1024, f);
-    cJSON* root = cJSON_ParseWithLength(config, bytes);
+    if (bytes) {
+        cJSON* root = cJSON_Parse(config);
+        char* ssid = cJSON_GetObjectItem(root, "ssid")->valuestring;
+        char* psk = cJSON_GetObjectItem(root, "psk")->valuestring;
+        ESP_LOGI(LOG_TAG, "Set SSID to %s", ssid);
+        strncpy((char*)(wifi_config.sta.ssid), ssid, sizeof(wifi_config.sta.ssid));
+        strncpy((char*)(wifi_config.sta.password), psk, sizeof(wifi_config.sta.password));
+        ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+        ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+        cJSON_Delete(root);
+    }
 
-    char* ssid = cJSON_GetObjectItem(root, "ssid")->valuestring;
-    char* psk = cJSON_GetObjectItem(root, "psk")->valuestring;
-    ESP_LOGI(LOG_TAG, "Set SSID to %s", ssid);
-    strncpy((char*)(wifi_config.sta.ssid), ssid, sizeof(wifi_config.sta.ssid));
-    strncpy((char*)(wifi_config.sta.password), psk, sizeof(wifi_config.sta.password));
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-    cJSON_Delete(root);
     free(config);
     fclose(f);
 }
@@ -77,6 +78,8 @@ static void wifi_handler(void* arg, esp_event_base_t event_base,
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         esp_wifi_connect();
         ESP_LOGI(LOG_TAG, "Connect failed, retrying");
+    } else if (event_base == WIFI_EVENT) {
+        ESP_LOGI(LOG_TAG, "Got wifi event %d", event_id);
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
         ESP_LOGI(LOG_TAG, "Got ip: " IPSTR, IP2STR(&event->ip_info.ip));
