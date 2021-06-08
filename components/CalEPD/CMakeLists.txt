@@ -4,12 +4,15 @@ set(srcs
     "models/gdeh0213b73.cpp"
     # Common base classes
     "epd.cpp"
+    "epd7color.cpp"
     "epdspi.cpp"
     "epd4spi.cpp"
+    "epdParallel.cpp"
     )
 
-idf_component_register(SRCS ${srcs}
+idf_component_register(SRCS ${srcs}      
                     REQUIRES "Adafruit-GFX"
+
                     INCLUDE_DIRS "include"
 )
 

@@ -6,9 +6,54 @@
 
 * Espressif IDF framework **v. 4.3**
 * An SPI epaper. Check [the Wiki](https://github.com/martinberlin/cale-idf/wiki) for supported models
+* In order to use the parallel epaper displays it needs EPDiy library as a submodule. I prepared a fork that can be directly used as a component:
+
+    git submodule add https://github.com/martinberlin/epdiy-rotation.git components/epd_driver
 
 CalEPD needs also [Adafruit-GFX-Library-ESP-IDF](https://github.com/martinberlin/Adafruit-GFX-Library-ESP-IDF) as a component since it's uses the GFX magic to provide fonts and geometrical functions to your pixel Buffer.
 To check how an existing project uses it check [CALE-IDF dependencies](https://github.com/martinberlin/cale-idf/network/dependencies) and the [components folder](https://github.com/martinberlin/cale-idf/tree/master/components).
+Please check the [paralell examples in Cale-idf](https://github.com/martinberlin/cale-idf/tree/master/main/demos/parallel) project to get a grasp of how they work together with the EPDiy integration. 
+
+### Touch models
+
+In latest CalEPD releases we included two classes that are touch aware. Touch models marked with a T suffix are disabled by default, uncomment in case of requirement in the CMakeLists.txt file:
+
+```
+set(srcs 
+   #"models/gdew027w3T.cpp"
+   #"models/parallel/ED047TC1touch.cpp"
+)
+```
+
+**Instantiation of touch**
+
+For more in-deep use cases check the Cale-idf examples
+
+```c
+// Add the Focal Tech class for Goodisplay 2.7 inch epaper
+#include <FT6X36.h>
+#include <gdew027w3T.h>
+// INTGPIO is touch interrupt, goes low when it detects a touch, which coordinates are read by I2C
+FT6X36 ts(CONFIG_TOUCH_INT);
+EpdSpi io;
+// Inject both IO and Touch to the display class in the constructor parameters
+Gdew027w3T display(io, ts);
+```
+
+## Fork policy
+
+**Please do not Fork this repository to bookmark it**. For that use the ★ Star button. Acceptable forks fall in this three categories:
+
+1. You found a bug and want to suggest a merge request. Then Fork it!
+2. You will contribute adding a new epaper model that does exist.
+3. You will use CaEPD as a base to create something new. But in that case it would be nice to let us know first!
+
+All other users that fork this without falling in this categories and without any kind of advice to us will be blocked and will not be able to interact with the further Cale releases. Forking is not bookmarking!
+
+We don't like having copies of this without any reason. It is just a bad practice, makes things confusing, and makes absolutely no sense. This repository is not going to dissapear or be deleted by any means so you can use it with confidence.
+Forking this in order to make updates that fit your particular project is alright, as long as you update the readme and state what are the intentions to do so.
+
+## Classmap 
 
 ![CalEPD Classmap](/assets/CalEPD_flow.svg)
 
